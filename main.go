@@ -13,6 +13,8 @@ import (
 type Storage interface {
 	Insert(uid string, url string) error
 	Get(uid string) (string, error)
+	PostHandler(w http.ResponseWriter, req *http.Request)
+	GetHandler(w http.ResponseWriter, req *http.Request)
 }
 
 // тип urlStorage и его параметр Data
@@ -27,11 +29,13 @@ func NewStorageStruct() *UrlStorage {
 	}
 }
 
+// тип urlStorage и его метод Insert
 func (s *UrlStorage) Insert(uid string, url string) error {
 	s.Data[uid] = url
 	return nil
 }
 
+// тип urlStorage и его метод Get
 func (s *UrlStorage) Get(uid string) (string, error) {
 	e, existss := s.Data[uid]
 	if !existss {
@@ -40,10 +44,10 @@ func (s *UrlStorage) Get(uid string) (string, error) {
 	return e, nil
 }
 
-// Создаю запись в передаваемом сюда объекте реализующем интерфейс Storage
-func MakeNewEntry(s Storage, uid string, url string) {
-	s.Insert(uid, url)
-}
+// // Создаю запись в передаваемом сюда объекте реализующем интерфейс Storage
+// func MakeNewEntry(s Storage, uid string, url string) {
+// 	s.Insert(uid, url)
+// }
 
 // Функция для генерации сокращённого URL
 func generateShortURL(urlList *UrlStorage, longURL string) string {
@@ -53,59 +57,42 @@ func generateShortURL(urlList *UrlStorage, longURL string) string {
 	uuidStr = strings.ReplaceAll(uuidStr, "-", "")
 	uid := uuidStr[:8]
 
-	MakeNewEntry(urlList, uid, longURL)
+	//Вот здесь создаем запись в нашем объекте (типа UrlStorage)
+	//map[string]string ["6ba7b811": "https://practicum.yandex.ru/", ]
+	urlList.Insert(uid, longURL)
 
 	return "/" + uid
 }
 
-type urlServer struct {
-	store *UrlStorage
-}
-
-func NewUrlServer() *urlServer {
-	store := NewStorageStruct()
-	return &urlServer{store: store}
-}
-
-func (ts *urlServer) PostHandler(w http.ResponseWriter, req *http.Request) {
-	//Для нужной работы конечной точки будем смотреть поля структуры Request
-	//Читаем тело запроса- поле Body
-	//Поле Body имеет тип io.ReadCloser и данные имеют такой непосредственный вид:
-	//&{0xc0001a8000 <nil> <nil> false true {0 0} true false false 0x762820}
-	//func io.ReadAll(r io.Reader) ([]byte, error)
+// тип urlStorage и его метод PostHandler
+func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 	param, err := io.ReadAll(req.Body)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-
-	//Вроде так нужно
-	defer req.Body.Close()
+	// //Вроде так нужно
+	// defer req.Body.Close()
 
 	// Преобразуем тело запроса (тип []byte) в строку:
 	longURL := string(param)
-
-	// Генерируем сокращённый URL
-	shortURL := req.Host + generateShortURL(ts.store, longURL)
+	// Генерируем сокращённый URL и создаем запись в нашем хранилище
+	shortURL := req.Host + generateShortURL(ts, longURL)
 
 	// Устанавливаем статус ответа 201
 	w.WriteHeader(http.StatusCreated)
-	// //Content-Type устанавливается как text/plain по умолчанию,
-	// //сигнатура такая:
-	//w.Header().Set("Content-Type", "text/plain")
 
-	// // Версию HTTP можно узнать так
-	// httpVersion := r.Proto
-
-	// Отправляем сокращённый URL в теле ответа
 	fmt.Fprint(w, shortURL)
 
 }
 
-func (ts *urlServer) GetHandler(w http.ResponseWriter, req *http.Request) {
+// тип urlStorage и его метод GetHandler
+func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 	id := req.PathValue("id")
 
-	longURL, err := ts.store.Get(id)
+	longURL, err := ts.Get(id)
+	//А вот так не работает. Нельзя вызвать параметр как функцию (метод)
+	//longURL := ts.Data(id)
 	if err != nil {
 		http.Error(w, "URL not found", http.StatusBadRequest)
 		fmt.Println(err)
@@ -121,12 +108,13 @@ func (ts *urlServer) GetHandler(w http.ResponseWriter, req *http.Request) {
 func main() {
 	//создаем маршрутизатор
 	mux := http.NewServeMux()
-	//
-	server := NewUrlServer()
+	//создаю объект типа UrlStorage
+	storage := NewStorageStruct()
 
-	mux.HandleFunc("POST /{$}", server.PostHandler)
-	mux.HandleFunc("GET /{id}", server.GetHandler)
-	//mux.Handle("GET /{id}", server.GetHandler)
+	//обращаюсь к методам UrlStorage
+	mux.HandleFunc("POST /{$}", storage.PostHandler)
+	mux.HandleFunc("GET /{id}", storage.GetHandler)
+	//mux.Handle("/pizzas", pizzasHandler{&pizzas})
 
 	http.ListenAndServe("localhost:8080", mux)
 }
