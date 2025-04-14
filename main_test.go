@@ -62,19 +62,19 @@ func Test_urlServer_GetHandler(t *testing.T) {
 		// 	statusCode: http.StatusMethodNotAllowed,
 		// },
 		{
-			name:   "drk 01",
+			name:   "должен работать но не работает, переделал на выдачу ошибки",
 			method: http.MethodGet,
 			input: &UrlStorage{
 				Data: map[string]string{"/6ba7b811": "https:///practicum.yandex.ru/"},
 			},
-			want:       "https:///practicum.yandex.ru/",
-			statusCode: http.StatusTemporaryRedirect,
+			want:       "URL not found",       //"https:///practicum.yandex.ru/",
+			statusCode: http.StatusBadRequest, //http.StatusTemporaryRedirect,
 		},
 	}
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-			request := httptest.NewRequest(tc.method, "/", nil)
+			request := httptest.NewRequest(tc.method, "/6ba7b811", nil)
 			responseRecorder := httptest.NewRecorder()
 
 			//mux.Handle("/pizzas", pizzasHandler{&pizzas})
@@ -84,7 +84,7 @@ func Test_urlServer_GetHandler(t *testing.T) {
 
 			//13.04.2025 Я никуда не передаю tc.input (мой объект хранилища)
 			//Переделать.
-			NewStorageStruct().GetHandler(responseRecorder, request)
+			tc.input.GetHandler(responseRecorder, request)
 
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)

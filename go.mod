@@ -1,6 +1,6 @@
 module github.com/dr2cc/sandbox-for-my-code
 
-go 1.23.0
+go 1.22.1
 
 require github.com/satori/go.uuid v1.2.0
 
