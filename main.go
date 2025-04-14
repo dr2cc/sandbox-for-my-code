@@ -57,7 +57,7 @@ func generateShortURL(urlList *UrlStorage, longURL string) string {
 	uuidStr = strings.ReplaceAll(uuidStr, "-", "")
 	uid := uuidStr[:8]
 
-	//Вот здесь создаем запись в нашем объекте (типа UrlStorage)
+	//Вот здесь создаем запись в нашем объекте (типа *UrlStorage)
 	//map[string]string ["6ba7b811": "https://practicum.yandex.ru/", ]
 	urlList.Insert(uid, longURL)
 
@@ -71,8 +71,6 @@ func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
-	// //Вроде так нужно
-	// defer req.Body.Close()
 
 	// Преобразуем тело запроса (тип []byte) в строку:
 	longURL := string(param)
@@ -88,14 +86,16 @@ func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 
 // тип urlStorage и его метод GetHandler
 func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
-	id := req.PathValue("id")
+	// //Пока (14.04.2025) не знаю как передать PathValue при тестировании.
+	// id := req.PathValue("id")
+
+	// А вот RequestURI получается и от клиента и из теста
+	// Но получаем лишний "/"
+	id := strings.TrimPrefix(req.RequestURI, "/")
 
 	longURL, err := ts.Get(id)
-	//А вот так не работает. Нельзя вызвать параметр как функцию (метод)
-	//longURL := ts.Data(id)
 	if err != nil {
 		http.Error(w, "URL not found", http.StatusBadRequest)
-		fmt.Println(err)
 		return
 	}
 
