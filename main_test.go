@@ -7,7 +7,7 @@ import (
 	"testing"
 )
 
-func Test_urlServer_GetHandler(t *testing.T) {
+func TestUrlStorage_GetHandler(t *testing.T) {
 	tt := []struct {
 		name       string
 		method     string
@@ -69,6 +69,36 @@ func Test_urlServer_GetHandler(t *testing.T) {
 			if strings.TrimSpace(responseRecorder.Header()["Location"][0]) != tc.want {
 				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
 			}
+		})
+	}
+}
+
+// Сгенерирован VSCode (как обычно кроме данных теста).
+// Прошел! Что проверил пока не знаю :-)
+func TestUrlStorage_PostHandler(t *testing.T) {
+	type args struct {
+		w   http.ResponseWriter
+		req *http.Request
+	}
+	tests := []struct {
+		name string
+		ts   *UrlStorage
+		args args
+	}{
+		{
+			name: "all good",
+			ts: &UrlStorage{
+				Data: map[string]string{"6ba7b811": "https://practicum.yandex.ru/"},
+			},
+			args: args{
+				w:   httptest.NewRecorder(),
+				req: httptest.NewRequest("POST", "/6ba7b811", nil),
+			},
+		},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			tt.ts.PostHandler(tt.args.w, tt.args.req)
 		})
 	}
 }
