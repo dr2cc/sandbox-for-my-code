@@ -16,7 +16,7 @@ func Test_urlServer_GetHandler(t *testing.T) {
 		statusCode int
 	}{
 		{
-			name:   "должен работать",
+			name:   "all good",
 			method: http.MethodGet,
 			input: &UrlStorage{
 				Data: map[string]string{"6ba7b811": "https://practicum.yandex.ru/"},
@@ -24,13 +24,24 @@ func Test_urlServer_GetHandler(t *testing.T) {
 			want:       "https://practicum.yandex.ru/",
 			statusCode: http.StatusTemporaryRedirect,
 		},
-		// {
-		// 	name:       "with bad method",
-		// 	method:     http.MethodPost,
-		// 	input:      &Pizzas{},
-		// 	want:       "Method not allowed",
-		// 	statusCode: http.StatusMethodNotAllowed,
-		// }, //http.StatusBadRequest,
+		{
+			name:   "with bad method",
+			method: http.MethodPost,
+			input: &UrlStorage{
+				Data: map[string]string{"6ba7b811": "https://practicum.yandex.ru/"},
+			},
+			want:       "Method not allowed",
+			statusCode: http.StatusMethodNotAllowed,
+		},
+		{
+			name:   "key does not match target",
+			method: http.MethodGet,
+			input: &UrlStorage{
+				Data: map[string]string{"6ba7b81": "https://practicum.yandex.ru/"},
+			},
+			want:       "URL with such id doesn`t exist",
+			statusCode: http.StatusBadRequest,
+		},
 	}
 
 	for _, tc := range tt {
@@ -41,7 +52,7 @@ func Test_urlServer_GetHandler(t *testing.T) {
 			request := httptest.NewRequest(tc.method, "/6ba7b811", nil)
 
 			// //Вроде если запрос от клиента, то можно использовать пакет http
-			// //Но не работает. Оставлю, вдруг что-то подскажет.
+			// //но не работает. Оставлю, вдруг что-то подскажет.
 			// request, _ := http.NewRequest(tc.method, "/6ba7b811", nil)
 
 			//Вызываем метод GetHandler структуры UrlStorage

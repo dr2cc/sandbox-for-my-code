@@ -86,27 +86,36 @@ func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 
 // тип urlStorage и его метод GetHandler
 func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
-	// //Пока (14.04.2025) не знаю как передать PathValue при тестировании.
-	// id := req.PathValue("id")
+	//Тесты подсказали добавить проверку на метод:
+	switch req.Method {
+	case http.MethodGet:
+		// //Пока (14.04.2025) не знаю как передать PathValue при тестировании.
+		// id := req.PathValue("id")
 
-	// А вот RequestURI получается и от клиента и из теста
-	// Но получаем лишний "/"
-	id := strings.TrimPrefix(req.RequestURI, "/")
+		// А вот RequestURI получается и от клиента и из теста
+		// Но получаем лишний "/"
+		id := strings.TrimPrefix(req.RequestURI, "/")
 
-	longURL, err := ts.Get(id)
-	if err != nil {
-		http.Error(w, "URL not found", http.StatusBadRequest)
-		return
+		longURL, err := ts.Get(id)
+		if err != nil {
+			//http.Error(w, "URL not found", http.StatusBadRequest)
+			w.Header().Set("Location", err.Error())
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+
+		w.Header().Set("Location", longURL)
+		// //И так и так работает. Оставил первоначальный вариант.
+		//http.Redirect(w, r, longURL, http.StatusTemporaryRedirect)
+		w.WriteHeader(http.StatusTemporaryRedirect)
+	default:
+		w.Header().Set("Location", "Method not allowed")
+		w.WriteHeader(http.StatusMethodNotAllowed)
 	}
-
-	w.Header().Set("Location", longURL)
-	// //И так и так работает. Оставил первоначальный вариант.
-	//http.Redirect(w, r, longURL, http.StatusTemporaryRedirect)
-	w.WriteHeader(http.StatusTemporaryRedirect)
 }
 
 func main() {
-	//создаем маршрутизатор
+	//создаю маршрутизатор
 	mux := http.NewServeMux()
 	//создаю объект типа UrlStorage
 	storage := NewStorageStruct()
@@ -114,7 +123,6 @@ func main() {
 	//обращаюсь к методам UrlStorage
 	mux.HandleFunc("POST /{$}", storage.PostHandler)
 	mux.HandleFunc("GET /{id}", storage.GetHandler)
-	//mux.Handle("/pizzas", pizzasHandler{&pizzas})
 
 	http.ListenAndServe("localhost:8080", mux)
 }
