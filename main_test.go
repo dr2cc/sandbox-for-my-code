@@ -1,6 +1,8 @@
 package main
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -77,30 +79,45 @@ func TestUrlStorage_GetHandler(t *testing.T) {
 // Прошел! Что проверил пока не знаю :-)
 func TestUrlStorage_PostHandler(t *testing.T) {
 	type args struct {
-		w   http.ResponseWriter
+		//w   http.ResponseWriter
+		w   *httptest.ResponseRecorder
 		req *http.Request
 	}
 	tests := []struct {
 		name string
 		ts   *UrlStorage
 		args args
-		//видимо не хватает want и
-		//got
+		// //видимо не хватает want
+		// want string
+		//и statusCode
+		statusCode int
 	}{
 		{
 			name: "all good",
+			//если все нормально, то нужен статус и правильный
+			//возвращает ответ с кодом 201 и сокращённым URL как text/plain.
 			ts: &UrlStorage{
 				Data: map[string]string{"6ba7b811": "https://practicum.yandex.ru/"},
 			},
 			args: args{
-				w:   httptest.NewRecorder(),
-				req: httptest.NewRequest("POST", "/6ba7b811", nil),
+				w: httptest.NewRecorder(),
+				//req: httptest.NewRequest("POST", "/6ba7b811", nil),
+				req: &http.Request{
+					Method: "POST",
+					//Host:   "https://practicum.yandex.ru/",
+					Body: io.NopCloser(bytes.NewBuffer([]byte("https://practicum.yandex.ru/"))),
+				},
 			},
+			statusCode: 201,
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.ts.PostHandler(tt.args.w, tt.args.req)
+			//httptest.NewRequest(tc.method, "/6ba7b811", nil)
+			if tt.args.w.Code != tt.statusCode {
+				t.Errorf("Want status '%d', got '%d'", tt.statusCode, tt.args.w.Code)
+			}
 		})
 	}
 }
