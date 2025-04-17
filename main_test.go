@@ -75,48 +75,59 @@ func TestUrlStorage_GetHandler(t *testing.T) {
 	}
 }
 
-// Сгенерирован VSCode (как обычно кроме данных теста).
-// Прошел! Что проверил пока не знаю :-)
+// Основной каркас сгенерирован VSCode
 func TestUrlStorage_PostHandler(t *testing.T) {
 	type args struct {
 		//w   http.ResponseWriter
 		w   *httptest.ResponseRecorder
 		req *http.Request
 	}
+
+	//Здесь данные не меняющиеся от теста к тесту
+	//longURL := "https://practicum.yandex.ru/"
+	shortURL := "6ba7b811"
+	host := "localhost:8080"
+	record := map[string]string{shortURL: "https://practicum.yandex.ru/"}
+
 	tests := []struct {
 		name string
 		ts   *UrlStorage
 		args args
-		// //видимо не хватает want
-		// want string
-		//и statusCode
+		//
 		statusCode int
+		want       string
 	}{
 		{
 			name: "all good",
-			//если все нормально, то нужен статус и правильный
-			//возвращает ответ с кодом 201 и сокращённым URL как text/plain.
 			ts: &UrlStorage{
-				Data: map[string]string{"6ba7b811": "https://practicum.yandex.ru/"},
+				Data: record,
 			},
 			args: args{
 				w: httptest.NewRecorder(),
 				//req: httptest.NewRequest("POST", "/6ba7b811", nil),
 				req: &http.Request{
 					Method: "POST",
-					//Host:   "https://practicum.yandex.ru/",
-					Body: io.NopCloser(bytes.NewBuffer([]byte("https://practicum.yandex.ru/"))),
+					Host:   host,
+					Body:   io.NopCloser(bytes.NewBuffer([]byte(record[shortURL]))),
 				},
 			},
-			statusCode: 201,
+			//если все нормально:
+			//возвращает статус с кодом 201 (http.StatusCreated)
+			//и сокращённым URL в Body (как text/plain)
+			statusCode: http.StatusCreated,
+			want:       "localhost:8080/6ba7b811",
 		},
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			tt.ts.PostHandler(tt.args.w, tt.args.req)
-			//httptest.NewRequest(tc.method, "/6ba7b811", nil)
+			//Здесь проверяю статус
 			if tt.args.w.Code != tt.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tt.statusCode, tt.args.w.Code)
+			}
+			//Здесь проверяю содержимое Body
+			if strings.TrimSpace(tt.args.w.Body.String()) != tt.want {
+				t.Errorf("Want '%s', got '%s'", tt.want, tt.args.w.Body)
 			}
 		})
 	}
