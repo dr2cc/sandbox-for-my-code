@@ -33,10 +33,10 @@ func TestUrlStorage_GetHandler(t *testing.T) {
 				Data: map[string]string{"6ba7b811": "https://practicum.yandex.ru/"},
 			},
 			want:       "Method not allowed",
-			statusCode: http.StatusMethodNotAllowed,
+			statusCode: http.StatusBadRequest,
 		},
 		{
-			name:   "key does not match target",
+			name:   "key in input does not match /6ba7b811",
 			method: http.MethodGet,
 			input: &UrlStorage{
 				Data: map[string]string{"6ba7b81": "https://practicum.yandex.ru/"},
@@ -48,26 +48,24 @@ func TestUrlStorage_GetHandler(t *testing.T) {
 
 	for _, tc := range tt {
 		t.Run(tc.name, func(t *testing.T) {
-
 			responseRecorder := httptest.NewRecorder()
-			//Так рекомендуют
-			request := httptest.NewRequest(tc.method, "/6ba7b811", nil)
-
-			// //Вроде если запрос от клиента, то можно использовать пакет http
-			// //но не работает. Оставлю, вдруг что-то подскажет.
+			// //Если запрос от клиента, то можно использовать пакет http. Не сработало..
 			// request, _ := http.NewRequest(tc.method, "/6ba7b811", nil)
-
-			//Вызываем метод GetHandler структуры UrlStorage
-			//Этот метод делает запись в responseRecorder
+			request := httptest.NewRequest(tc.method, "/6ba7b811", nil)
+			// Вызываем метод GetHandler структуры UrlStorage (input)
+			// Этот метод делает запись в responseRecorder
 			tc.input.GetHandler(responseRecorder, request)
 
-			// По заданию на конечную точку с методом GET в инкременте 1:
-			// В случае успешной обработки запроса сервер возвращает статус с кодом 307
-			// и URL (переоеданный ранее) в заголовке "Location"
+			// По заданию на конечную точку с методом GET в инкременте 1
+			// в случае успешной обработки запроса сервер возвращает:
+
+			// статус с кодом 307, должен совпадлать с тем, что описан в statusCode
 			if responseRecorder.Code != tc.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tc.statusCode, responseRecorder.Code)
 			}
 
+			// URL (переданный в input) в заголовке "Location", в случае ошибки,
+			// сообщение о ошибке должно совпадать с want
 			if strings.TrimSpace(responseRecorder.Header()["Location"][0]) != tc.want {
 				t.Errorf("Want '%s', got '%s'", tc.want, responseRecorder.Body)
 			}
@@ -83,11 +81,12 @@ func TestUrlStorage_PostHandler(t *testing.T) {
 		req *http.Request
 	}
 
-	//Здесь данные не меняющиеся от теста к тесту
+	//Здесь стандартно передаваемые ("правильные") данные, вне теста получаемые от клиента
 	//longURL := "https://practicum.yandex.ru/"
-	shortURL := "6ba7b811"
 	host := "localhost:8080"
+	shortURL := "6ba7b811"
 	record := map[string]string{shortURL: "https://practicum.yandex.ru/"}
+	body := io.NopCloser(bytes.NewBuffer([]byte(record[shortURL])))
 
 	tests := []struct {
 		name string
@@ -107,15 +106,56 @@ func TestUrlStorage_PostHandler(t *testing.T) {
 				//req: httptest.NewRequest("POST", "/6ba7b811", nil),
 				req: &http.Request{
 					Method: "POST",
-					Host:   host,
-					Body:   io.NopCloser(bytes.NewBuffer([]byte(record[shortURL]))),
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Host: host,
+					Body: body,
 				},
 			},
 			//если все нормально:
 			//возвращает статус с кодом 201 (http.StatusCreated)
-			//и сокращённым URL в Body (как text/plain)
+			//и сокращённым URL в body (text/plain)
 			statusCode: http.StatusCreated,
 			want:       "localhost:8080/6ba7b811",
+		},
+		{
+			name: "bad method",
+			ts: &UrlStorage{
+				Data: record,
+			},
+			args: args{
+				w: httptest.NewRecorder(),
+				req: &http.Request{
+					Method: "GET",
+					Header: http.Header{
+						"Content-Type": []string{"text/plain"},
+					},
+					Host: host,
+					Body: body,
+				},
+			},
+			statusCode: http.StatusBadRequest,
+			want:       "Method not allowed",
+		},
+		{
+			name: "bad header",
+			ts: &UrlStorage{
+				Data: record,
+			},
+			args: args{
+				w: httptest.NewRecorder(),
+				req: &http.Request{
+					Method: "POST",
+					Header: http.Header{
+						"Content-Type": []string{"applicatin/json"},
+					},
+					Host: host,
+					Body: body,
+				},
+			},
+			statusCode: http.StatusBadRequest,
+			want:       "Content-Type isn`t text/plain",
 		},
 	}
 	for _, tt := range tests {
@@ -125,7 +165,7 @@ func TestUrlStorage_PostHandler(t *testing.T) {
 			if tt.args.w.Code != tt.statusCode {
 				t.Errorf("Want status '%d', got '%d'", tt.statusCode, tt.args.w.Code)
 			}
-			//Здесь проверяю содержимое Body
+			//Здесь проверяю содержимое body
 			if strings.TrimSpace(tt.args.w.Body.String()) != tt.want {
 				t.Errorf("Want '%s', got '%s'", tt.want, tt.args.w.Body)
 			}

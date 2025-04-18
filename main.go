@@ -66,22 +66,31 @@ func generateShortURL(urlList *UrlStorage, longURL string) string {
 
 // тип urlStorage и его метод PostHandler
 func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
-	param, err := io.ReadAll(req.Body)
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
-		return
+	switch req.Method {
+	case http.MethodPost:
+		switch req.Header.Get("Content-Type") {
+		case "text/plain":
+			param, err := io.ReadAll(req.Body)
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusBadRequest)
+				return
+			}
+
+			// Преобразуем тело запроса (тип []byte) в строку:
+			longURL := string(param)
+			// Генерируем сокращённый URL и создаем запись в нашем хранилище
+			shortURL := req.Host + generateShortURL(ts, longURL)
+
+			w.WriteHeader(http.StatusCreated)
+			fmt.Fprint(w, shortURL)
+		default:
+			w.WriteHeader(http.StatusBadRequest)
+			fmt.Fprint(w, "Content-Type isn`t text/plain")
+		}
+	default:
+		w.WriteHeader(http.StatusBadRequest)
+		fmt.Fprint(w, "Method not allowed")
 	}
-
-	// Преобразуем тело запроса (тип []byte) в строку:
-	longURL := string(param)
-	// Генерируем сокращённый URL и создаем запись в нашем хранилище
-	shortURL := req.Host + generateShortURL(ts, longURL)
-
-	// Устанавливаем статус ответа 201
-	w.WriteHeader(http.StatusCreated)
-
-	fmt.Fprint(w, shortURL)
-
 }
 
 // тип urlStorage и его метод GetHandler
@@ -110,7 +119,7 @@ func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusTemporaryRedirect)
 	default:
 		w.Header().Set("Location", "Method not allowed")
-		w.WriteHeader(http.StatusMethodNotAllowed)
+		w.WriteHeader(http.StatusBadRequest)
 	}
 }
 
