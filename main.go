@@ -12,9 +12,7 @@ import (
 
 type Storage interface {
 	Insert(uid string, url string) error
-	Get(uid string) (string, error)
-	PostHandler(w http.ResponseWriter, req *http.Request)
-	GetHandler(w http.ResponseWriter, req *http.Request)
+	GetURL(uid string) (string, error)
 }
 
 // тип urlStorage и его параметр Data
@@ -36,7 +34,7 @@ func (s *UrlStorage) Insert(uid string, url string) error {
 }
 
 // тип urlStorage и его метод Get
-func (s *UrlStorage) Get(uid string) (string, error) {
+func (s *UrlStorage) GetURL(uid string) (string, error) {
 	e, existss := s.Data[uid]
 	if !existss {
 		return uid, errors.New("URL with such id doesn`t exist")
@@ -44,10 +42,10 @@ func (s *UrlStorage) Get(uid string) (string, error) {
 	return e, nil
 }
 
-// // Создаю запись в передаваемом сюда объекте реализующем интерфейс Storage
-// func MakeNewEntry(s Storage, uid string, url string) {
-// 	s.Insert(uid, url)
-// }
+// Реализую интерфейс Storage - создаю запись в передаваемом сюда объекте
+func MakeNewEntry(s Storage, uid string, url string) {
+	s.Insert(uid, url)
+}
 
 // Функция для генерации сокращённого URL
 func generateShortURL(urlList *UrlStorage, longURL string) string {
@@ -57,9 +55,14 @@ func generateShortURL(urlList *UrlStorage, longURL string) string {
 	uuidStr = strings.ReplaceAll(uuidStr, "-", "")
 	uid := uuidStr[:8]
 
-	//Вот здесь создаем запись в нашем объекте (типа *UrlStorage)
-	//map[string]string ["6ba7b811": "https://practicum.yandex.ru/", ]
-	urlList.Insert(uid, longURL)
+	// //Вот здесь создаем запись в нашем объекте (типа *UrlStorage)
+	// //map[string]string ["6ba7b811": "https://practicum.yandex.ru/", ]
+	// //Так можно вызвать метод Insert не реализуя интерфейс Storage
+	//urlList.Insert(uid, longURL)
+
+	//Реализуем интерфейс Storage, что в последующем даст возможность
+	//использовать его методы и другим типам
+	MakeNewEntry(urlList, uid, longURL)
 
 	return "/" + uid
 }
@@ -93,6 +96,12 @@ func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// Реализую интерфейс Storage - получаю запись из объекта хранилища
+func GetEntry(s Storage, uid string) (string, error) {
+	e, err := s.GetURL(uid)
+	return e, err
+}
+
 // тип urlStorage и его метод GetHandler
 func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 	//Тесты подсказали добавить проверку на метод:
@@ -105,7 +114,11 @@ func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 		// Но получаем лишний "/"
 		id := strings.TrimPrefix(req.RequestURI, "/")
 
-		longURL, err := ts.Get(id)
+		// //Так не реализуя интерфейс
+		//longURL, err := ts.GetURL(id)
+
+		//Так реализуя интерфейс
+		longURL, err := GetEntry(ts, id)
 		if err != nil {
 			//http.Error(w, "URL not found", http.StatusBadRequest)
 			w.Header().Set("Location", err.Error())
