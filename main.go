@@ -123,9 +123,51 @@ func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 	}
 }
 
+// *********************************************************************************
+// CustomMux переопределяет стандартный ServeMux, чтобы вместо 405 возвращать 400
+type CustomMux struct {
+	*http.ServeMux
+}
+
+func (m *CustomMux) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	// Проверяем, есть ли такой путь
+	_, pattern := m.Handler(r)
+	if pattern == "" {
+		// // Если эндпоинта нет вообще — 404
+		// http.NotFound(w, r)
+
+		// Но мне нужно 400
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Если эндпоинт есть, но метод не совпадает — 400
+	if !m.isMethodAllowed(r) {
+		http.Error(w, "Bad Request", http.StatusBadRequest)
+		return
+	}
+
+	// Иначе передаем обработку стандартному ServeMux
+	m.ServeMux.ServeHTTP(w, r)
+}
+
+// isMethodAllowed проверяет, разрешен ли метод для данного пути
+func (m *CustomMux) isMethodAllowed(r *http.Request) bool {
+	// Получаем зарегистрированный обработчик для этого пути
+	handler, _ := m.Handler(r)
+
+	// Если обработчик — это ServeMux (значит, метод не совпадает)
+	_, isServeMux := handler.(*http.ServeMux)
+	return !isServeMux
+}
+
 func main() {
-	//создаю маршрутизатор
-	mux := http.NewServeMux()
+	// mux := http.NewServeMux()
+
+	//Для создания ответ 400 на все не верные запросы
+	//создаю кастомный ServeMux (маршрутизатор)
+	mux := &CustomMux{http.NewServeMux()}
+
 	//создаю объект типа UrlStorage
 	storage := NewStorageStruct()
 
