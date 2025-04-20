@@ -4,10 +4,11 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/rand"
 	"net/http"
+	"regexp"
 	"strings"
-
-	uuid "github.com/satori/go.uuid"
+	"time"
 )
 
 type Storage interface {
@@ -47,22 +48,20 @@ func MakeNewEntry(s Storage, uid string, url string) {
 	s.InsertURL(uid, url)
 }
 
-// Функция для генерации сокращённого URL
-func generateShortURL(urlList *UrlStorage, longURL string) string {
-	// Генерируем уникальный идентификатор (uid) при помощи пакета go.uuid
-	uuidObj := uuid.NamespaceURL
-	uuidStr := uuidObj.String()
-	uuidStr = strings.ReplaceAll(uuidStr, "-", "")
-	uid := uuidStr[:8]
-
-	// //Вот здесь создаем запись в нашем объекте (типа *UrlStorage)
-	// //map[string]string ["6ba7b811": "https://practicum.yandex.ru/", ]
-	// //Так можно вызвать метод Insert не реализуя интерфейс Storage
-	//urlList.Insert(uid, longURL)
+func generateShortURL(urlList *UrlStorage, s string) string {
+	rand.Seed(time.Now().UnixNano()) // Инициализация генератора случайных чисел
+	runes := []rune(s)
+	rand.Shuffle(len(runes), func(i, j int) {
+		runes[i], runes[j] = runes[j], runes[i]
+	})
+	//удаляю из полученной строки все кроме букв и цифр
+	reg := regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9]`)
+	//[:11] здесь мы еще сокращаем строку
+	uid := reg.ReplaceAllString(string(runes[:11]), "")
 
 	//Реализуем интерфейс Storage, что в последующем даст возможность
 	//использовать его методы и другим типам
-	MakeNewEntry(urlList, uid, longURL)
+	MakeNewEntry(urlList, uid, s)
 
 	return "/" + uid
 }
@@ -137,7 +136,8 @@ func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // *********************************************************************************
-// CustomMux переопределяет стандартный ServeMux, чтобы вместо 405 возвращать 400
+// Секция переопредения стандартного ServeMux маршрутизатором CustomMux,
+// Цель- возвращать 400 вместо 405
 type CustomMux struct {
 	*http.ServeMux
 }
@@ -173,6 +173,8 @@ func (m *CustomMux) isMethodAllowed(r *http.Request) bool {
 	_, isServeMux := handler.(*http.ServeMux)
 	return !isServeMux
 }
+
+//*************************************************************************
 
 func main() {
 	// mux := http.NewServeMux()
