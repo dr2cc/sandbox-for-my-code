@@ -11,7 +11,7 @@ import (
 )
 
 type Storage interface {
-	Insert(uid string, url string) error
+	InsertURL(uid string, url string) error
 	GetURL(uid string) (string, error)
 }
 
@@ -27,13 +27,13 @@ func NewStorageStruct() *UrlStorage {
 	}
 }
 
-// тип urlStorage и его метод Insert
-func (s *UrlStorage) Insert(uid string, url string) error {
+// тип urlStorage и его метод InsertURL
+func (s *UrlStorage) InsertURL(uid string, url string) error {
 	s.Data[uid] = url
 	return nil
 }
 
-// тип urlStorage и его метод Get
+// тип urlStorage и его метод GetURL
 func (s *UrlStorage) GetURL(uid string) (string, error) {
 	e, existss := s.Data[uid]
 	if !existss {
@@ -44,7 +44,7 @@ func (s *UrlStorage) GetURL(uid string) (string, error) {
 
 // Реализую интерфейс Storage - создаю запись в передаваемом сюда объекте
 func MakeNewEntry(s Storage, uid string, url string) {
-	s.Insert(uid, url)
+	s.InsertURL(uid, url)
 }
 
 // Функция для генерации сокращённого URL
