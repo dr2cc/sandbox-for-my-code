@@ -136,7 +136,8 @@ func (ts *UrlStorage) GetHandler(w http.ResponseWriter, req *http.Request) {
 }
 
 // *********************************************************************************
-// Секция переопредения стандартного ServeMux маршрутизатором CustomMux,
+// Секция сервера
+// Здесь переопределен стандартный ServeMux маршрутизатором CustomMux,
 // Цель- возвращать 400 вместо 405
 type CustomMux struct {
 	*http.ServeMux
@@ -174,21 +175,47 @@ func (m *CustomMux) isMethodAllowed(r *http.Request) bool {
 	return !isServeMux
 }
 
-//*************************************************************************
-
-func main() {
-	// mux := http.NewServeMux()
-
-	//Для создания ответ 400 на все не верные запросы
-	//создаю кастомный ServeMux (маршрутизатор)
+// setupServer создает и настраивает HTTP-сервер
+func setupServer() *CustomMux {
 	mux := &CustomMux{http.NewServeMux()}
 
 	//создаю объект типа UrlStorage
-	storage := NewStorageStruct()
+	storageInstance := NewStorageStruct()
 
 	//обращаюсь к методам UrlStorage
-	mux.HandleFunc("POST /{$}", storage.PostHandler)
-	mux.HandleFunc("GET /{id}", storage.GetHandler)
+	mux.HandleFunc("POST /{$}", storageInstance.PostHandler)
+	mux.HandleFunc("GET /{id}", storageInstance.GetHandler)
 
-	http.ListenAndServe("localhost:8080", mux)
+	// // Регистрируем эндпоинты
+	// mux.HandleFunc("GET /{id}", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("GET response"))
+	// })
+
+	// mux.HandleFunc("POST /{$}", func(w http.ResponseWriter, r *http.Request) {
+	// 	w.Write([]byte("POST response"))
+	// })
+
+	return mux
+}
+
+//*************************************************************************************
+
+func main() {
+	// // mux := http.NewServeMux()
+
+	// //Для создания ответ 400 на все не верные запросы
+	// //создаю кастомный ServeMux (маршрутизатор)
+	// mux := &CustomMux{http.NewServeMux()}
+
+	// //создаю объект типа UrlStorage
+	// storage := NewStorageStruct()
+
+	// //обращаюсь к методам UrlStorage
+	// mux.HandleFunc("POST /{$}", storage.PostHandler)
+	// mux.HandleFunc("GET /{id}", storage.GetHandler)
+
+	// http.ListenAndServe("localhost:8080", mux)
+
+	server := setupServer()
+	http.ListenAndServe("localhost:8080", server)
 }
