@@ -43,27 +43,36 @@ func (s *UrlStorage) GetURL(uid string) (string, error) {
 	return e, nil
 }
 
-// Реализую интерфейс Storage - создаю запись в передаваемом сюда объекте
-func MakeNewEntry(s Storage, uid string, url string) {
-	s.InsertURL(uid, url)
+// *** Реализую интерфейс Storage********************************
+// создаю запись в объекте типа UrlStorage
+func MakeEntry(s Storage, id string, url string) {
+	s.InsertURL(id, url)
 }
 
-func generateShortURL(urlList *UrlStorage, s string) string {
+// получаю запись из объекта хранилища
+func GetEntry(s Storage, id string) (string, error) {
+	e, err := s.GetURL(id)
+	return e, err
+}
+
+//***********************************************************
+
+func generateShortURL(urlList *UrlStorage, longURL string) string {
 	rand.Seed(time.Now().UnixNano()) // Инициализация генератора случайных чисел
-	runes := []rune(s)
+	runes := []rune(longURL)
 	rand.Shuffle(len(runes), func(i, j int) {
 		runes[i], runes[j] = runes[j], runes[i]
 	})
 	//удаляю из полученной строки все кроме букв и цифр
 	reg := regexp.MustCompile(`[^a-zA-Zа-яА-Я0-9]`)
 	//[:11] здесь мы еще сокращаем строку
-	uid := reg.ReplaceAllString(string(runes[:11]), "")
+	id := reg.ReplaceAllString(string(runes[:11]), "")
 
 	//Реализуем интерфейс Storage, что в последующем даст возможность
 	//использовать его методы и другим типам
-	MakeNewEntry(urlList, uid, s)
+	MakeEntry(urlList, id, longURL)
 
-	return "/" + uid
+	return "/" + id
 }
 
 // тип urlStorage и его метод PostHandler
@@ -72,16 +81,15 @@ func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 	case http.MethodPost:
 		switch req.Header.Get("Content-Type") {
 		case "text/plain":
+			//param- тело запроса (тип []byte)
 			param, err := io.ReadAll(req.Body)
 			if err != nil {
 				http.Error(w, err.Error(), http.StatusBadRequest)
 				return
 			}
 
-			// Преобразуем тело запроса (тип []byte) в строку:
-			longURL := string(param)
 			// Генерируем сокращённый URL и создаем запись в нашем хранилище
-			shortURL := req.Host + generateShortURL(ts, longURL)
+			shortURL := req.Host + generateShortURL(ts, string(param))
 
 			w.WriteHeader(http.StatusCreated)
 			fmt.Fprint(w, shortURL)
@@ -93,12 +101,6 @@ func (ts *UrlStorage) PostHandler(w http.ResponseWriter, req *http.Request) {
 		w.WriteHeader(http.StatusBadRequest)
 		fmt.Fprint(w, "Method not allowed")
 	}
-}
-
-// Реализую интерфейс Storage - получаю запись из объекта хранилища
-func GetEntry(s Storage, uid string) (string, error) {
-	e, err := s.GetURL(uid)
-	return e, err
 }
 
 // тип urlStorage и его метод GetHandler
@@ -186,36 +188,12 @@ func setupServer() *CustomMux {
 	mux.HandleFunc("POST /{$}", storageInstance.PostHandler)
 	mux.HandleFunc("GET /{id}", storageInstance.GetHandler)
 
-	// // Регистрируем эндпоинты
-	// mux.HandleFunc("GET /{id}", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Write([]byte("GET response"))
-	// })
-
-	// mux.HandleFunc("POST /{$}", func(w http.ResponseWriter, r *http.Request) {
-	// 	w.Write([]byte("POST response"))
-	// })
-
 	return mux
 }
 
 //*************************************************************************************
 
 func main() {
-	// // mux := http.NewServeMux()
-
-	// //Для создания ответ 400 на все не верные запросы
-	// //создаю кастомный ServeMux (маршрутизатор)
-	// mux := &CustomMux{http.NewServeMux()}
-
-	// //создаю объект типа UrlStorage
-	// storage := NewStorageStruct()
-
-	// //обращаюсь к методам UrlStorage
-	// mux.HandleFunc("POST /{$}", storage.PostHandler)
-	// mux.HandleFunc("GET /{id}", storage.GetHandler)
-
-	// http.ListenAndServe("localhost:8080", mux)
-
 	server := setupServer()
 	http.ListenAndServe("localhost:8080", server)
 }
