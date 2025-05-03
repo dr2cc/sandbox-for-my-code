@@ -195,5 +195,5 @@ func setupServer() *CustomMux {
 
 func main() {
 	server := setupServer()
-	http.ListenAndServe("localhost:8080", server)
+	http.ListenAndServe(":8080", server)
 }
