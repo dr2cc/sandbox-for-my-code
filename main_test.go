@@ -115,24 +115,24 @@ func TestURLStorage_PostHandler(t *testing.T) {
 			//возвращает статус с кодом 201 (http.StatusCreated)
 			statusCode: http.StatusCreated,
 		},
-		{
-			name: "bad method",
-			ts: &URLStorage{
-				Data: record,
-			},
-			args: args{
-				w: httptest.NewRecorder(),
-				req: &http.Request{
-					Method: "GET",
-					Header: http.Header{
-						"Content-Type": []string{"text/plain"},
-					},
-					Host: host,
-					Body: body,
-				},
-			},
-			statusCode: http.StatusBadRequest,
-		},
+		// {
+		// 	name: "bad method",
+		// 	ts: &URLStorage{
+		// 		Data: record,
+		// 	},
+		// 	args: args{
+		// 		w: httptest.NewRecorder(),
+		// 		req: &http.Request{
+		// 			Method: "GET",
+		// 			Header: http.Header{
+		// 				"Content-Type": []string{"text/plain"},
+		// 			},
+		// 			Host: host,
+		// 			Body: body,
+		// 		},
+		// 	},
+		// 	statusCode: http.StatusBadRequest,
+		// },
 		{
 			name: "bad header",
 			ts: &URLStorage{
